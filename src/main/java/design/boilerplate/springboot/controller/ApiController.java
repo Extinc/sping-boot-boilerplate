@@ -39,15 +39,14 @@ public class ApiController {
 	}
 
 	// Get the List of User
-	@GetMapping("/api/user/list")
+	@GetMapping("/api/user/all")
 	public ResponseEntity<List<User>> getAllCustomUser() {
 		return ResponseEntity.ok().body(userRepo.findAll());
 	}
 
 	// Get Specific user
-	@GetMapping("/api/user/{username}")
+	@GetMapping("/api/user/{username}/retrieve")
 	public ResponseEntity<?> getCustomUser(@PathVariable(value="username") String username) {
-
 		if(!userRepo.existsByUsername(username) ){
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User does not exist");
 		}
@@ -56,13 +55,15 @@ public class ApiController {
 
 
 	// Put Specific user
-	@PutMapping("/api/user/{username}")
+	@PutMapping("/api/user/update")
 	public ResponseEntity<?> updateCustomUser(@RequestBody User customUser) {
 
 		if(!userRepo.existsByUsername(customUser.getUsername())){
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User does not exist");
 		}
 
+		// Find the user and update the user data
+		// Also to throw a exception if any thing else
 		userRepo.findById(customUser.getId()).map(user -> {
 			user.setUserRole(customUser.getUserRole());
 			user.setName(customUser.getName());
@@ -70,15 +71,15 @@ public class ApiController {
 			user.setUsername(customUser.getUsername());
 			user.setPassword(customUser.getPassword());
 			return ResponseEntity.ok().body(userRepo.save(user));
-		}).orElseThrow(RuntimeException::new);
+		});
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error");
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error updating user");
 	}
 
 
 	// Put Specific user
-	@DeleteMapping("/api/user/{username}")
-	public ResponseEntity<String> updateCustomUser(@PathVariable(value="username") String username) {
+	@DeleteMapping("/api/user/{username}/delete")
+	public ResponseEntity<String> deleteCustomUser(@PathVariable(value="username") String username) {
 		// Check if user exist if it does not return error
 		if(!userRepo.existsByUsername(username) ){
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("User does not exist");
