@@ -34,20 +34,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
+// Setup Mockito
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 @AutoConfigureMockMvc
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ApiControllerTest {
 
+    // Declare MockMvc Obj
     private MockMvc mockMvc;
 
+    // INject the ApiController
     @InjectMocks
     private ApiController apiController;
 
+    // Annotation to create mock object
     @Mock
     private UserRepository userRepository;
 
+    // Set up Test Environment
     @BeforeAll
     public void setup() {
         MockitoAnnotations.initMocks(this);
@@ -140,8 +145,8 @@ public class ApiControllerTest {
                 .userRole(UserRole.USER)
                 .build();
         // This is used to mock object
-        // given(userRepository.existsByUsername("keiyiang1")).willReturn(true);
-        // given(userRepository.existsByEmail("keiyiang@testcode.com")).willReturn(true);
+        given(userRepository.existsByUsername("keiyiang1")).willReturn(true);
+        given(userRepository.existsByEmail("keiyiang@testcode.com")).willReturn(true);
 
         given(userRepository.save(beforeUpdateUser)).willReturn(beforeUpdateUser);
         given(userRepository.save(afterUpdateUser)).willReturn(afterUpdateUser);
@@ -157,20 +162,22 @@ public class ApiControllerTest {
 
     @Test
     public void testDeleteUser() throws Exception {
-        final ObjectMapper objectMapper = new ObjectMapper();
 
-        User customUser = new User();
-        customUser.setId(1L);
-        customUser.setEmail("keiyiang@testcode.com");
-        customUser.setUsername("keiyiang1");
-        customUser.setName("keiyiang");
-        customUser.setPassword("mypass");
-        customUser.setUserRole(UserRole.USER);
-        String json = objectMapper.writeValueAsString(customUser);
-        System.out.println();
+        User user = User.builder()
+                .id(1L)
+                .email("keiyiang@testcode.com")
+                .username("keiyiang1")
+                .password("keiyiangpassword")
+                .userRole(UserRole.USER)
+                .build();
+        // given - precondition or setup
+        given(userRepository.existsByUsername(user.getUsername())).willReturn(true);
+        given(userRepository.findByUsername(user.getUsername())).willReturn(user);
+        long userId = 1L;
+        willDoNothing().given(userRepository).deleteById(userId);
 
-        mockMvc.perform(delete("/api/user/keiyiang1/delete")
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+        mockMvc.perform(delete("/api/user/keiyiang1/delete"))
+                .andExpect(status().isOk());
+
     }
 }
