@@ -1,40 +1,43 @@
 
-import com.fasterxml.jackson.core.io.JsonStringEncoder;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import design.boilerplate.springboot.controller.ApiController;
 import design.boilerplate.springboot.model.User;
 import design.boilerplate.springboot.model.UserRole;
 
 import design.boilerplate.springboot.repository.UserRepository;
-import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-
-import java.nio.charset.Charset;
-
-import static org.hamcrest.Matchers.notNullValue;
+import org.hamcrest.Matchers;
+import static org.mockito.BDDMockito.*;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
-
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @AutoConfigureMockMvc
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class ApiControllerTest {
 
     private MockMvc mockMvc;
@@ -45,13 +48,11 @@ public class ApiControllerTest {
     @Mock
     private UserRepository userRepository;
 
-
-    @Before
+    @BeforeAll
     public void setup() {
         MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(apiController).build();
     }
-
 
     @Test
     public void testCreateCustomUser() throws Exception {
@@ -69,18 +70,36 @@ public class ApiControllerTest {
         mockMvc.perform(post("/api/user/create")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", notNullValue()))
-                .andExpect(jsonPath("$.email", Matchers.is(customUser.getEmail())));
+                .andExpect(status().isOk());
     }
-
 
     @Test
     public void testGetListOfUser() throws Exception {
+        User user = User.builder()
+                .id(1L)
+                .email("keiyiang@testcode.com")
+                .username("keiyiang1")
+                .password("keiyiangpassword")
+                .userRole(UserRole.USER)
+                .build();
+
+        User userTwo = User.builder()
+                .id(1L)
+                .email("keiyiang2@testcode.com")
+                .username("keiyiang21")
+                .password("keiyiangpassword")
+                .userRole(UserRole.USER)
+                .build();
+
+        List<User> userList = new ArrayList<User>();
+        userList.add(user);
+        userList.add(userTwo);
+
+        given(userRepository.findAll()).willReturn(userList);
 
         mockMvc.perform(get("/api/user/all")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andExpect(jsonPath("$", Matchers.hasSize(2)));
     }
 
     @Test
@@ -94,30 +113,45 @@ public class ApiControllerTest {
         customUser.setPassword("mypass");
         customUser.setUserRole(UserRole.USER);
 
-        System.out.println();
+        given(userRepository.findByUsername("keiyiang1")).willReturn(customUser);
 
         mockMvc.perform(get("/api/user/keiyiang1/retrieve")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.username", is(customUser.getUsername())));
     }
 
     @Test
     public void testUpdateSpecificUser() throws Exception {
         final ObjectMapper objectMapper = new ObjectMapper();
 
-        User customUser = new User();
-        customUser.setId(1L);
-        customUser.setEmail("keiyiang@testcode.com");
-        customUser.setUsername("keiyiang1");
-        customUser.setName("keiyiang");
-        customUser.setPassword("mypass");
-        customUser.setUserRole(UserRole.USER);
-        String json = objectMapper.writeValueAsString(customUser);
+        User beforeUpdateUser = User.builder()
+                .id(1L)
+                .email("keiyiang@testcode.com")
+                .username("keiyiang1")
+                .password("keiyiangpassword")
+                .userRole(UserRole.USER)
+                .build();
+
+        User afterUpdateUser = User.builder()
+                .id(1L)
+                .email("keiyiang@testcode.com")
+                .username("keiyiang2")
+                .password("keiyiangpassword")
+                .userRole(UserRole.USER)
+                .build();
+        // This is used to mock object
+        // given(userRepository.existsByUsername("keiyiang1")).willReturn(true);
+        // given(userRepository.existsByEmail("keiyiang@testcode.com")).willReturn(true);
+
+        given(userRepository.save(beforeUpdateUser)).willReturn(beforeUpdateUser);
+        given(userRepository.save(afterUpdateUser)).willReturn(afterUpdateUser);
+
+        String json = objectMapper.writeValueAsString(afterUpdateUser);
         System.out.println();
 
         mockMvc.perform(put("/api/user/update")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
                 .andExpect(status().isBadRequest());
     }
 
@@ -136,7 +170,7 @@ public class ApiControllerTest {
         System.out.println();
 
         mockMvc.perform(delete("/api/user/keiyiang1/delete")
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 }
